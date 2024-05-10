@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="Arianna Costanzo">
+    <title>Boolzapp</title>
+    <link rel="icon" href="img/icon.png">
+    <!-- bootstraap -->
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css' integrity='sha512-b2QcS5SsA8tZodcDtGRELiGv5SaKSk1vDHDaQRda0htPYWZ6046lr3kJ5bAAQdpV2mmA/4v0wQF9MyU6/pDIAg==' crossorigin='anonymous'/>
+    <!-- fontawesome -->
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css' integrity='sha512-Avb2QiuDEEvB4bZJYdft2mNjVShBftLdPG8FJ0V7irTLQ8Uo0qcPxh4Plq7G5tGm0rU+1SPhVotteLpBERwTkw==' crossorigin='anonymous'/>
+    <!-- stile -->
+    <link rel="stylesheet" href="stile/style.css">
+    <!-- vue -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- data -->
+    <script src="js/data.js"></script>
+    <!-- script -->
+    <script src="js/main.js" defer></script>
+</head>
+<body>
+    
+
+
+    <div id="root" class="row">
+        <div id="left-container" class="col-12 col-lg-5 col-xl-4">
+            <!-- header -->
+            <header>
+                <!-- info user -->
+                <div class="user-info">
+                    <img :src="`img/icon${user.avatar}.webp`" :alt="user.name" class="user-img header-img">
+                    <div class="user-name-time">
+                        <p class="user-name">{{user.name}}</p>
+                    </div>
+                </div>
+                <!-- icone -->
+                <div class="header-icons">
+                    <i class="fa-solid fa-circle-notch"></i>
+                    <i class="fa-solid fa-message"></i>
+                    <i class="fa-solid fa-ellipsis-vertical ms-2"></i>
+                </div>
+            </header>
+            <div id="notification-container">
+                <div><i class="fa-solid fa-bell-slash"></i></div>
+                <div>
+                    <p class="fw-semibold">Ricevi notifiche di nuovi messaggi</p>
+                    <p>Attiva notifiche desktop</p>
+                </div>
+                
+            </div>
+            <div id="searchbar-container">
+                <div class="searchbar-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+                <input type="text" placeholder="Cerca o inizia una nuova chat" v-model="filteredName">
+                <button v-show="filteredName" type="button" class="btn-close" aria-label="Close" @click="filteredName = ''"></button>
+            </div>
+            <div id="chats-container">
+                <ul>
+                    <li v-for="contact in filteredContacts" :key="contact.avatar" @click="getCurrentContact(contact.id)">
+                        <img :src="`img/icon${contact.avatar}.webp`" :alt="contact.name" class="user-img chat-img">
+                        <div class="contact-info">
+                            <p class="user-name">{{contact.name}}</p>
+                            <!-- <p class="last-message" :class="isWriting ? 'writing' : ''">{{ isWriting ? 'Sta scrivendo...' : cutMessage(contact) }}</p> -->
+                            <p class="last-message" :class="showIsWritingClass(contact.id)" v-html="showIsWriting(contact.id, contact)"></p>
+                            <!-- <p class="last-message">{{cutMessage(contact)}}</p> -->
+                        </div>
+                        <p class="last-date">{{showDate(contact, '')}}</p>
+                    </li>
+                </ul>
+            </div>
+
+            
+            
+        </div>
+        <div id="right-container" class="col-7 col-xl-8" >
+            <!-- header -->
+            <header>
+                <!-- info user -->
+                <div class="user-info">
+                    <img :src="`img/icon${currentContact.avatar}.webp`" :alt="currentContact.name" class="user-img header-img">
+                    <div class="user-name-time">
+                        <p class="user-name">{{currentContact.name}}</p>
+                        <p class="user-time">Ultimo accesso: <span>{{showDate(currentContact, 'oggi')}}</span></p>
+                    </div>
+                </div>
+                <!-- icone -->
+                <div class="header-icons position-relative">
+                    <div class="position-relative">
+                        <input type="text" v-show="showFilter" id="message-filter" placeholder="Filtra messaggi" v-model="filterMessage">
+                        <button id='filter-close-btn' v-show="filterMessage" type="button" class="btn-close" aria-label="Close" @click="filterMessage = '' "></button>
+                        <i class="fa-solid fa-magnifying-glass" @click="showFilter = !showFilter"></i>
+                    </div>
+                    <label for='image-upload' >
+                        <input type="file" id="image-upload" accept="image/png, image/jpeg, image/jpg" @change="previewFiles">
+                        <i class="fa-solid fa-paperclip"></i>
+                    </label>
+                    
+                    <i class="fa-solid fa-ellipsis-vertical ms-2 " @click="toggleEmpty"></i>
+                    <div v-show="showEmpty" class="delete-container">
+                        <p @click="emptyChat">Svuota chat</p>
+                    </div>
+                </div>
+            </header>
+            <!-- current chat -->
+            <section id="current-chat-container" :class="showInfo ?  'block-overflow' : 'scrollbar' ">
+                
+                <div v-for="message in filteredMessages" class="message" :class="isSent(message.status) ? 'sent' : 'received'" :key="message.id" @click="showDelete(message)">
+                    <i class="fa-solid fa-angle-down arrow-menu"></i>
+                    <p class="message-text" v-html="message.text"></p>
+                    <p class="message-time">{{message.date}} 
+                        <span v-show="message.status === 'sent'" class="double-check message-checked"><i class="fa-solid fa-check"></i><i class="fa-solid fa-check"></i></span>
+                    </p>
+                    <div v-show="checkIdMessage(message.id)" class="delete-container">
+                        <p @click="showInfo = true" v-show="message.status === 'sent'">Info messaggio</p>
+                        <p v-show="!showInfo" @click="deleteMessage(message.id)">Cancella messaggio</p>
+                    </div>
+                </div>
+                
+                <!-- info messaggio -->
+                <div id="info-messaggio" v-if="showInfo"> 
+                    <header>
+                        <div>
+                            <button type="button" class="btn-close me-2" @click="this.showInfo = false"></button>
+                            Info messaggio
+                        </div>
+                    </header>
+                    <div id="info-message-background">
+                        <div class="message" :class="isSent(currentMessage.status) ? 'sent' : 'received'">
+                            <i class="fa-solid fa-angle-down arrow-menu"></i>
+                            <p class="message-text" v-html="currentMessage.text"></p>
+                            <p class="message-time">
+                                {{currentMessage.date}} 
+                                <span v-show="currentMessage.status === 'sent'" class="double-check message-checked"><i class="fa-solid fa-check"></i><i class="fa-solid fa-check"></i></span>
+                            </p>
+                        </div>
+                    </div>
+                    <div id="info-message-checked">
+                        <span class="double-check message-checked"><i class="fa-solid fa-check"></i><i class="fa-solid fa-check"></i></span>
+                        <span class="ms-3">Letto</span>
+                        <p class="user-time">{{currentMessage.date}}</p>
+                        <hr>
+                        <span class="double-check"><i class="fa-solid fa-check"></i><i class="fa-solid fa-check"></i></span>
+                        <span class="ms-3">Consegnato</span>
+                        <p class="user-time">{{currentMessage.date}}</p>
+
+                    </div>
+                </div>
+
+            </section>
+            <!-- footer -->
+            <footer>
+                <div class="footer-chat" v-if="!isRecording">
+                    <div class="footer-icon"><i class="fa-regular fa-face-smile" @click="printEmoji"></i></div>
+                <div class="footer-new-text d-flex align-items-center">
+                    <input type="text" placeholder="Scrivi un messaggio" autofocus v-model="textSent" @keyup.enter="sendMessage">
+                    
+                </div>
+                <div class="footer-icon">
+                    <i class="fa-solid fa-microphone" @click="recording"></i>
+                </div>
+                </div>
+                
+
+                <!-- recording div -->
+                <div id="recording-div" v-if="isRecording">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="fa-solid fa-trash" @click="stopRecording"></i>
+                        <p >{{timer}}</p>
+                    </div>
+                    <div class="waves">
+                        <div v-for="wave in waves" class="wave" :style="`height:${wave.height}px`"></div>
+                        
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="fa-solid fa-circle-pause" @click="pauseRecording"></i>
+                        <i class="fa-solid fa-paper-plane" @click="sendingAudio"></i>
+                    </div>
+                </div>
+
+            </footer>
+            
+
+        </div>
+        
+
+    </div>
+
+    <p id="prova"></p>
+</body>
+</html>
+
+
+
+<!-- sistemare la scrollbar di sinistra -->
+<!-- al click del microfono spunta un div che sovrasta tutto il footer con cestino, secondi che aumentano, onde che aumentano, stop e invio -->
+<!-- cambiare foto con i miei amici -->
+<!-- fare responsive, se chiudo le chat si nascondono -->
+<!-- bugs: -->
+<!-- info messaggio si sballa se c'è la scrollbar -->
+<!-- se ho info aperto e premo un messaggio inviato mi cambia il messaggio mostrato in quello lì -->
+<!-- se cambio user mentre sta scrivendo scriverà l'altro -->
+<!-- se ho info messaggio aperto e cambio user mi mostra il primo messaggio di quell'user -->
+
+
